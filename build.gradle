@@ -1,0 +1,41 @@
+plugins {
+	id 'java-library'
+}
+
+group = 'com.de314.data'
+version = '1.0.0'
+sourceCompatibility = '1.8'
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	compile 'org.rocksdb:rocksdbjni:5.5.1'
+
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.9.10'
+//	implementation 'com.github.java-json-tools:json-schema-validator:2.2.11'
+
+	implementation group: 'com.google.guava', name: 'guava', version: '23.0'
+
+	implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.28'
+
+	compileOnly 'org.projectlombok:lombok:1.18.10'
+	annotationProcessor 'org.projectlombok:lombok:1.18.10'
+
+
+	testCompile 'org.projectlombok:lombok:1.18.10'
+	testAnnotationProcessor 'org.projectlombok:lombok:1.18.10'
+	testCompile group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.5.2'
+	testCompile group: 'org.mockito', name: 'mockito-all', version: '1.10.19'
+}
+
+test {
+	useJUnitPlatform()
+}
