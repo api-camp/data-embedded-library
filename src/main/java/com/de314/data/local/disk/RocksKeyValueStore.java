@@ -1,17 +1,17 @@
 package com.de314.data.local.disk;
 
-import com.de314.data.local.api.AbstractKeyValueStore;
-import com.de314.data.local.api.DataAdapter;
-import com.de314.data.local.api.DataRow;
-import com.de314.data.local.api.ScanOptions;
+import com.de314.data.local.api.kv.AbstractKeyValueStore;
+import com.de314.data.local.api.service.DataAdapter;
+import com.de314.data.local.api.model.DataRow;
+import com.de314.data.local.api.model.ScanOptions;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
-import org.rocksdb.ReadOptions;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 import org.rocksdb.RocksIterator;
 
+import java.io.File;
 import java.util.Optional;
 import java.util.Spliterator;
 import java.util.concurrent.atomic.AtomicLong;
@@ -131,11 +131,25 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
         return value != null && value.length > 0;
     }
 
+    @Override
+    public void close() {
+        rocks.close();
+    }
+
     public static <ValueT> RocksKeyValueStore<ValueT> create(String rocksPath, Class<ValueT> valueClass) throws RocksDBException {
         return create(rocksPath, DataAdapter.pojoByteConverter(valueClass));
     }
 
     public static <ValueT> RocksKeyValueStore<ValueT> create(String rocksPath, DataAdapter<ValueT, byte[]> dataAdapter) throws RocksDBException {
+        File dbDir = new File(rocksPath);
+        if (!dbDir.exists()) {
+            dbDir.mkdirs();
+        } else if (!dbDir.isDirectory()) {
+            throw new RuntimeException(
+                    "Wrapped",
+                    new IllegalAccessException("Invalid rocks db path: " + rocksPath)
+            );
+        }
         RocksDB rocks = RocksDB.open(rocksPath);
         return new RocksKeyValueStore<>(rocks, dataAdapter);
     }

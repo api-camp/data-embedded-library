@@ -1,4 +1,4 @@
-package com.de314.data.local.api;
+package com.de314.data.local.api.model;
 
 import lombok.Builder;
 import lombok.Data;

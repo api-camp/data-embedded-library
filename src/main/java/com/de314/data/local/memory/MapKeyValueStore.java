@@ -1,8 +1,8 @@
 package com.de314.data.local.memory;
 
-import com.de314.data.local.api.AbstractKeyValueStore;
-import com.de314.data.local.api.DataRow;
-import com.de314.data.local.api.ScanOptions;
+import com.de314.data.local.api.kv.AbstractKeyValueStore;
+import com.de314.data.local.api.model.DataRow;
+import com.de314.data.local.api.model.ScanOptions;
 import com.google.common.collect.Maps;
 import lombok.NonNull;
 
@@ -47,6 +47,11 @@ public class MapKeyValueStore<V> extends AbstractKeyValueStore<V> {
     @Override
     public boolean delete(@NonNull String key) {
         return store.remove(key) != null;
+    }
+
+    @Override
+    public void close() {
+        // ignored
     }
 
     public static <ValueT> MapKeyValueStore<ValueT> create() {

@@ -1,6 +1,6 @@
 package com.de314.data.local;
 
-import com.de314.data.local.api.KeyValueStore;
+import com.de314.data.local.api.kv.KeyValueStore;
 import com.de314.data.local.memory.MapKeyValueStore;
 import com.de314.data.local.model.Article;
 import org.junit.jupiter.api.Test;

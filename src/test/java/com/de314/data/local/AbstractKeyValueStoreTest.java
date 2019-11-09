@@ -1,14 +1,13 @@
 package com.de314.data.local;
 
-import com.de314.data.local.api.CursorPage;
-import com.de314.data.local.api.KeyValueStore;
-import com.de314.data.local.api.ScanOptions;
+import com.de314.data.local.api.model.CursorPage;
+import com.de314.data.local.api.kv.KeyValueStore;
+import com.de314.data.local.api.model.ScanOptions;
 import com.de314.data.local.model.Article;
 import com.google.common.collect.Sets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

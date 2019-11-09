@@ -1,5 +1,9 @@
-package com.de314.data.local.api;
+package com.de314.data.local.api.kv;
 
+import com.de314.data.local.api.model.CursorPage;
+import com.de314.data.local.api.service.DataAdapter;
+import com.de314.data.local.api.model.DataRow;
+import com.de314.data.local.api.model.ScanOptions;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 
@@ -52,5 +56,10 @@ public class AdaptedKeyValueStore<A, B> implements KeyValueStore<A> {
     @Override
     public long delete(ScanOptions options) {
         return delegate.delete(options);
+    }
+
+    @Override
+    public void close() {
+        delegate.close();
     }
 }

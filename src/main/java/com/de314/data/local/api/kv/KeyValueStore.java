@@ -1,5 +1,8 @@
-package com.de314.data.local.api;
+package com.de314.data.local.api.kv;
 
+import com.de314.data.local.api.model.CursorPage;
+import com.de314.data.local.api.model.DataRow;
+import com.de314.data.local.api.model.ScanOptions;
 import lombok.NonNull;
 
 import java.util.Optional;
@@ -22,4 +25,6 @@ public interface KeyValueStore<V> {
     boolean delete(@NonNull String key);
 
     long delete(ScanOptions options);
+
+    void close();
 }

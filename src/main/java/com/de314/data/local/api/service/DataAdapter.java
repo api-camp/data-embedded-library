@@ -1,4 +1,4 @@
-package com.de314.data.local.api;
+package com.de314.data.local.api.service;
 
 import com.de314.data.local.utils.JsonUtils;
 import lombok.Data;
