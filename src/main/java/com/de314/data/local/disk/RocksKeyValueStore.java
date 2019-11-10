@@ -4,6 +4,7 @@ import com.de314.data.local.api.kv.AbstractKeyValueStore;
 import com.de314.data.local.api.service.DataAdapter;
 import com.de314.data.local.api.model.DataRow;
 import com.de314.data.local.api.model.ScanOptions;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
@@ -134,6 +135,10 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
     @Override
     public void close() {
         rocks.close();
+    }
+
+    public static RocksKeyValueStore<JsonNode> create(String rocksPath) throws RocksDBException {
+        return create(rocksPath, DataAdapter.jsonByteAdapter());
     }
 
     public static <ValueT> RocksKeyValueStore<ValueT> create(String rocksPath, Class<ValueT> valueClass) throws RocksDBException {

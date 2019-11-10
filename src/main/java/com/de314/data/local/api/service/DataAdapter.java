@@ -1,6 +1,7 @@
 package com.de314.data.local.api.service;
 
 import com.de314.data.local.utils.JsonUtils;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
 import java.nio.charset.Charset;
@@ -43,10 +44,24 @@ public class DataAdapter<A, B> {
         );
     }
 
+    public static DataAdapter<JsonNode, byte[]> jsonByteAdapter() {
+        return new DataAdapter<>(
+                jsonUtils::asBytes,
+                jsonUtils::fromJson
+        );
+    }
+
     public static <T> DataAdapter<T, String> pojoStringConverter(Class<T> targetClass) {
         return new DataAdapter<>(
                 jsonUtils::asString,
                 s -> jsonUtils.fromJson(s, targetClass)
+        );
+    }
+
+    public static DataAdapter<JsonNode, String> jsonStringAdapter() {
+        return new DataAdapter<>(
+                jsonUtils::asString,
+                jsonUtils::fromJson
         );
     }
 }

@@ -3,11 +3,13 @@ package com.de314.data.local.api.service;
 import com.de314.data.local.api.kv.KeyValueStore;
 import com.de314.data.local.disk.RocksKeyValueStore;
 import com.de314.data.local.memory.MapKeyValueStore;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.rocksdb.RocksDBException;
 
 import java.io.File;
 import java.nio.file.FileSystems;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 @Slf4j
@@ -51,22 +53,46 @@ public class DataStoreFactory {
         return String.format("%s%s%s%sdb.rocks", rocksDbPathPrefix, SEPARATOR, namespace, SEPARATOR);
     }
 
+    public final RocksKeyValueStore<JsonNode> getRocksStore(String namespace) {
+        return getRocksStore(
+                namespace,
+                rocksDbPath -> {
+                    try {
+                        return RocksKeyValueStore.create(rocksDbPath);
+                    } catch (RocksDBException e) {
+                        e.printStackTrace();
+                    }
+                    return null;
+                }
+        );
+    }
+
     public final <V> RocksKeyValueStore<V> getRocksStore(String namespace, Class<V> tagetClass) {
+        return getRocksStore(
+                namespace,
+                rocksDbPath -> {
+                    try {
+                        return RocksKeyValueStore.create(rocksDbPath, tagetClass);
+                    } catch (RocksDBException e) {
+                        e.printStackTrace();
+                    }
+                    return null;
+                }
+        );
+    }
+
+    public final <V> RocksKeyValueStore<V> getRocksStore(String namespace, Function<String, RocksKeyValueStore<V>> storeCreator) {
         return getStore(namespace, rocksStoreCache, () -> {
-            try {
-                String rocksDbPath = getRocksPath(namespace);
-                log.info("Connecting to Rocks DB at {}", rocksDbPath);
-                return RocksKeyValueStore.create(rocksDbPath, tagetClass);
-            } catch (RocksDBException e) {
-                e.printStackTrace();
-            }
-            return null;
+            String rocksDbPath = getRocksPath(namespace);
+            log.info("Connecting to Rocks DB at {}", rocksDbPath);
+            return storeCreator.apply(rocksDbPath);
         });
     }
 
     public final void destroyRocksNamespace(String namespace) {
         synchronized (rocksStoreCache) {
             rocksStoreCache.get(namespace).ifPresent(store -> {
+                // TODO: appears to work correctly
 //                try {
 //                    store.close();
 //                } catch (Throwable t) {

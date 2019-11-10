@@ -1,6 +1,9 @@
 package com.de314.data.local.utils;
 
 import com.de314.data.local.model.Article;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +24,50 @@ public class JsonUtilsTest {
                 .build();
     }
 
+    private JsonNode n(int id) {
+        return jsonUtils.createObject().put("id", id);
+    }
+
+    @Test
+    public void createObject() {
+        ObjectNode actual = jsonUtils.createObject();
+        assertNotNull(actual);
+        assertEquals(0, actual.size());
+        assertEquals("{}", actual.toString());
+    }
+
+    @Test
+    public void createArray() {
+        ArrayNode actual = jsonUtils.createArray();
+        assertNotNull(actual);
+        assertEquals(0, actual.size());
+        assertEquals("[]", actual.toString());
+    }
+
+    @Test
+    public void merge() {
+        JsonNode a = n(1);
+        JsonNode b = jsonUtils.createObject().put("num", 42);
+
+        JsonNode expected = jsonUtils.createObject().put("id", 1).put("num", 42);
+
+        JsonNode actual = jsonUtils.merge(a, b);
+
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    public void merge_overwrite() {
+        JsonNode a = n(1);
+        JsonNode b = n(42);
+
+        JsonNode expected = jsonUtils.createObject().put("id", 42);
+
+        JsonNode actual = jsonUtils.merge(a, b);
+
+        assertEquals(expected, actual);
+    }
+
     @Test
     public void asString() {
         Article expected = a(1);
@@ -31,10 +78,28 @@ public class JsonUtilsTest {
     }
 
     @Test
+    public void asString_node() {
+        JsonNode expected = n(1);
+        String raw = jsonUtils.asString(expected);
+        JsonNode actual = jsonUtils.fromJson(raw);
+
+        assertEquals(expected, actual);
+    }
+
+    @Test
     void asBytes() {
         Article expected = a(1);
         byte[] raw = jsonUtils.asBytes(expected);
         Article actual = jsonUtils.fromJson(raw, Article.class);
+
+        assertEquals(expected, actual);
+    }
+
+    @Test
+    void asBytes_node() {
+        JsonNode expected = n(1);
+        byte[] raw = jsonUtils.asBytes(expected);
+        JsonNode actual = jsonUtils.fromJson(raw);
 
         assertEquals(expected, actual);
     }
