@@ -1,9 +1,10 @@
 package com.de314.data.local.api.kv;
 
 import com.de314.data.local.api.model.CursorPage;
-import com.de314.data.local.api.service.DataAdapter;
 import com.de314.data.local.api.model.DataRow;
+import com.de314.data.local.api.model.KVInfo;
 import com.de314.data.local.api.model.ScanOptions;
+import com.de314.data.local.api.service.DataAdapter;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 
@@ -15,6 +16,11 @@ public class AdaptedKeyValueStore<A, B> implements KeyValueStore<A> {
 
     private final KeyValueStore<B> delegate;
     private final DataAdapter<A, B> dataAdapter;
+
+    @Override
+    public KVInfo getInfo() {
+        return delegate.getInfo();
+    }
 
     @Override
     public long count() {

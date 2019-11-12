@@ -4,6 +4,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
 
+import java.util.Optional;
+
 @Data
 @Builder(toBuilder = true)
 public class ScanOptions {
@@ -49,5 +51,17 @@ public class ScanOptions {
         return ScanOptions.builder()
                 .startKey(startKey)
                 .endKey(endKey);
+    }
+
+    public static ScanOptions.ScanOptionsBuilder from(Optional<String> prefix, Optional<String> cursor) {
+        ScanOptions.ScanOptionsBuilder scanOptionsBuilder;
+        if (prefix.isPresent()) {
+            scanOptionsBuilder = ScanOptions.fromPrefix(prefix.get(), cursor.orElse(null));
+        } else if (cursor.isPresent()) {
+            scanOptionsBuilder = ScanOptions.fromCursor(cursor.get());
+        } else {
+            scanOptionsBuilder = ScanOptions.all();
+        }
+        return scanOptionsBuilder;
     }
 }

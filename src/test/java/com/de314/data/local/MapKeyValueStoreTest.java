@@ -9,7 +9,7 @@ public class MapKeyValueStoreTest extends AbstractKeyValueStoreTest {
 
     @Override
     KeyValueStore<Article> getStore() {
-        return MapKeyValueStore.create();
+        return MapKeyValueStore.create(Article.NAMESPACE);
     }
 
     @Test

@@ -5,7 +5,8 @@ build/
 !**/src/main/**
 !**/src/test/**
 
-test.rocks
+### api.camp - data
+data
 
 ### STS ###
 .apt_generated

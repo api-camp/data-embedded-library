@@ -2,6 +2,7 @@ package com.de314.data.local.api.kv;
 
 import com.de314.data.local.api.model.CursorPage;
 import com.de314.data.local.api.model.DataRow;
+import com.de314.data.local.api.model.KVInfo;
 import com.de314.data.local.api.model.ScanOptions;
 import lombok.NonNull;
 
@@ -9,6 +10,8 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 public interface KeyValueStore<V> {
+
+    KVInfo getInfo();
 
     long count();
 

@@ -15,6 +15,8 @@ import java.util.List;
 @AllArgsConstructor
 public class Article {
 
+    public static final String NAMESPACE = Article.class.getSimpleName();
+
     private long id;
     private String title;
     private String body;

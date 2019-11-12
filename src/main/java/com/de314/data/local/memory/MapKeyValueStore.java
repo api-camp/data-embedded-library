@@ -2,6 +2,7 @@ package com.de314.data.local.memory;
 
 import com.de314.data.local.api.kv.AbstractKeyValueStore;
 import com.de314.data.local.api.model.DataRow;
+import com.de314.data.local.api.model.KVInfo;
 import com.de314.data.local.api.model.ScanOptions;
 import com.google.common.collect.Maps;
 import lombok.NonNull;
@@ -12,9 +13,25 @@ import java.util.stream.Stream;
 
 public class MapKeyValueStore<V> extends AbstractKeyValueStore<V> {
 
+    public static final String STORE_KIND = "MemoryMap";
+
+    private final String namespace;
     private final Map<String, V> store = Maps.newTreeMap();
 
-    private MapKeyValueStore() { }
+    public MapKeyValueStore(String namespace) {
+        this.namespace = namespace;
+    }
+
+    @Override
+    public KVInfo getInfo() {
+        int size = store.size();
+        return KVInfo.builder()
+                .kind(STORE_KIND)
+                .namespace(namespace)
+                .size(size)
+                .prettySize(String.format("%,d records", size))
+                .build();
+    }
 
     @Override
     public long count() {
@@ -54,7 +71,7 @@ public class MapKeyValueStore<V> extends AbstractKeyValueStore<V> {
         // ignored
     }
 
-    public static <ValueT> MapKeyValueStore<ValueT> create() {
-        return new MapKeyValueStore<>();
+    public static <ValueT> MapKeyValueStore<ValueT> create(String namespace) {
+        return new MapKeyValueStore<>(namespace);
     }
 }

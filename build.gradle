@@ -4,7 +4,7 @@ plugins {
 }
 
 group = 'com.de314.data'
-version = '0.1.0'
+version = '0.2.0'
 sourceCompatibility = '1.8'
 
 configurations {
@@ -36,6 +36,8 @@ repositories {
 
 dependencies {
 	compile 'org.rocksdb:rocksdbjni:5.5.1'
+
+	compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.671'
 
 	compile 'com.fasterxml.jackson.core:jackson-databind:2.9.10'
 //	compile 'com.github.java-json-tools:json-schema-validator:2.2.11'
