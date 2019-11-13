@@ -8,7 +8,10 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.GetObjectRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.google.common.collect.Lists;
+import com.google.common.base.Functions;
+import lombok.Builder;
+import lombok.NonNull;
+import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedInputStream;
@@ -25,7 +28,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.Enumeration;
-import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.zip.ZipEntry;
@@ -36,9 +38,6 @@ import java.util.zip.ZipOutputStream;
 public class FileUtils {
 
     public static final String SEPARATOR = FileSystems.getDefault().getSeparator();
-    public static final String SPACE_BUCKET_NAME = "api-camp-data-backup";
-    public static final String SPACE_SERVICE_ENDPOINT = "nyc3.digitaloceanspaces.com";
-    public static final String SPACE_REGION = "nyc3";
 
     public static long directorySize(String path) {
             Path folder = Paths.get(path);
@@ -55,7 +54,7 @@ public class FileUtils {
 
     public static String toPrettySize(long size) {
         String[] units = new String[] { "B", "KB", "MB", "GB", "TB" };
-        int unitIndex = (int) (Math.log10(size) / 3);
+        int unitIndex = (int) Math.max(0, Math.log10(size) / 3);
         double unitValue = 1 << (unitIndex * 10);
 
         return new DecimalFormat("#,##0.#")
@@ -63,27 +62,39 @@ public class FileUtils {
                 + units[unitIndex];
     }
 
-    public static boolean deleteFolder(String path) {
-        File folder = new File(path);
-        if (folder.exists() && folder.isDirectory()) {
-            deleteFolder(folder);
-            return true;
+    public static boolean delete(String path) {
+        File file = new File(path);
+        if (file.exists()) {
+            if (file.isDirectory()) {
+                return deleteFolder(file);
+            } else {
+                return delete(file);
+            }
         }
-        return false;
+        return true;
     }
 
-    public static void deleteFolder(File folder) {
+    private static boolean deleteFolder(File folder) {
         File[] files = folder.listFiles();
+        boolean result = true;
         if (files != null) { //some JVMs return null for empty dirs
             for (File f : files) {
                 if (f.isDirectory()) {
-                    deleteFolder(f);
+                    result = result && deleteFolder(f);
                 } else {
-                    f.delete();
+                    result = result && delete(f);
                 }
             }
         }
-        folder.delete();
+        return result && delete(folder);
+    }
+
+    private static boolean delete(File f) {
+        boolean result = f.delete();
+        if (!result) {
+            log.warn("Unable to delete {}", f.getPath());
+        }
+        return result;
     }
 
     // http://www.java2s.com/Code/Java/File-Input-Output/Makingazipfileofdirectoryincludingitssubdirectoriesrecursively.htm
@@ -128,110 +139,124 @@ public class FileUtils {
         }
     }
 
-    public static void unzipDir(String archiveFilename) throws Exception {
-        ZipFile zipFile = new ZipFile(archiveFilename);
-        Enumeration enumeration = zipFile.entries();
-        while (enumeration.hasMoreElements()) {
-            ZipEntry zipEntry = (ZipEntry) enumeration.nextElement();
-            log.debug("Unzipping: {}", zipEntry.getName());
-            BufferedInputStream bis = new BufferedInputStream(zipFile.getInputStream(zipEntry));
-            int size;
-            byte[] buffer = new byte[2048];
-            BufferedOutputStream bos = new BufferedOutputStream(
-                    new FileOutputStream(zipEntry.getName()), buffer.length);
-            while ((size = bis.read(buffer, 0, buffer.length)) != -1) {
-                bos.write(buffer, 0, size);
-            }
-            bos.flush();
-            bos.close();
-            bis.close();
-        }
-    }
-
-    public static Function<String, List<String>> uploadArchiveStrategy(String accessKey, String secret, String namespace) {
-        return filename -> upload(accessKey, secret, filename, namespace);
-    }
-
-    public static List<String> upload(String accessKey, String secret, String filename, String namespace) {
-        log.info("Uploading namespace='{}': {}", namespace, filename);
+    public static boolean unzipDir(String archiveFilename, Function<String, String> pathMapper) {
         try {
-            AWSCredentialsProvider awscp = new AWSStaticCredentialsProvider(
-                    new BasicAWSCredentials(accessKey, secret)
-            );
-            AmazonS3 space = AmazonS3ClientBuilder
-                    .standard()
-                    .withCredentials(awscp)
-                    .withEndpointConfiguration(
-                            new AwsClientBuilder.EndpointConfiguration(SPACE_SERVICE_ENDPOINT, SPACE_REGION)
-                    )
-                    .build();
+            ZipFile zipFile = new ZipFile(archiveFilename);
 
-            List<String> urls = Lists.newArrayList(
-                    put(space, filename, String.format("bak.v1/%s", new File(filename).getName()))
-            );
-            if (namespace != null) {
-                urls.add(
-                        put(space, filename, String.format("bak.v1/%s-latest.zip", namespace))
+            Enumeration enumeration = zipFile.entries();
+            if (pathMapper == null) {
+                pathMapper = Functions.identity();
+            }
+            boolean upsertParents = true;
+            while (enumeration.hasMoreElements()) {
+                ZipEntry zipEntry = (ZipEntry) enumeration.nextElement();
+                String srcName = zipEntry.getName();
+                String targetName = pathMapper.apply(srcName);
+                log.debug("Unzipping: {} => {}", srcName, targetName);
+                if (upsertParents) {
+                    new File(targetName).getParentFile().mkdirs();
+                    upsertParents = false;
+                }
+
+                int size;
+                byte[] buffer = new byte[2048];
+                BufferedInputStream bis = new BufferedInputStream(zipFile.getInputStream(zipEntry));
+                BufferedOutputStream bos = new BufferedOutputStream(
+                        new FileOutputStream(targetName),
+                        buffer.length
                 );
+                while ((size = bis.read(buffer, 0, buffer.length)) != -1) {
+                    bos.write(buffer, 0, size);
+                }
+                bos.flush();
+                bos.close();
+                bis.close();
             }
-            return urls;
-        } catch (Throwable t) {
-            t.printStackTrace();
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return null;
+        return false;
     }
 
-    private static String put(AmazonS3 space, String filename, String putFilepath) throws FileNotFoundException {
-        File file = new File(filename);
-        InputStream is = new FileInputStream(file);
-        ObjectMetadata om = new ObjectMetadata();
-        om.setContentLength(file.length());
-        space.putObject(SPACE_BUCKET_NAME, putFilepath, is, om);
-        return space.getUrl(SPACE_BUCKET_NAME, putFilepath).toString();
-    }
-
-    public static boolean reload(String accessKey, String secret, String namespace) {
-        log.info("Reloading namespace='{}'", namespace);
+    public static boolean upload(SpaceConfig config, String srcFilename, String destFilename) {
+        log.info("Uploading {}", srcFilename);
         try {
-            AWSCredentialsProvider awscp = new AWSStaticCredentialsProvider(
-                    new BasicAWSCredentials(accessKey, secret)
-            );
-            AmazonS3 space = AmazonS3ClientBuilder
-                    .standard()
-                    .withCredentials(awscp)
-                    .withEndpointConfiguration(
-                            new AwsClientBuilder.EndpointConfiguration(SPACE_SERVICE_ENDPOINT, SPACE_REGION)
-                    )
-                    .build();
+            AmazonS3 space = getSpace(config);
 
-            String getFilepath = String.format("bak.v1/%s-latest.zip", namespace);
-            String tmpFile = get(space, getFilepath);
-            unzipDir(tmpFile);
-
-            return new File(tmpFile).delete();
+            File srcFile = new File(srcFilename);
+            String remoteFilename = put(space, config, srcFile, destFilename);
+            log.info("Uploaded remote file {}", remoteFilename);
+            return remoteFilename != null;
         } catch (Throwable t) {
             t.printStackTrace();
         }
         return false;
     }
 
+    private static AmazonS3 getSpace(SpaceConfig config) {
+        AWSCredentialsProvider awscp = new AWSStaticCredentialsProvider(
+                new BasicAWSCredentials(config.getAccessToken(), config.getSecret())
+        );
+        return AmazonS3ClientBuilder
+                .standard()
+                .withCredentials(awscp)
+                .withEndpointConfiguration(
+                        new AwsClientBuilder.EndpointConfiguration(config.getServiceEndpoint(), config.getRegion())
+                )
+                .build();
+    }
 
+    private static String put(AmazonS3 space, SpaceConfig config, File srcFile, String putFilepath) throws FileNotFoundException {
+        if (!srcFile.exists()) {
+            throw new FileNotFoundException(srcFile.getAbsolutePath());
+        }
+        InputStream is = new FileInputStream(srcFile);
+        ObjectMetadata om = new ObjectMetadata();
+        om.setContentLength(srcFile.length());
+        space.putObject(config.getBucketName(), putFilepath, is, om);
+        return space.getUrl(config.getBucketName(), putFilepath).toString();
+    }
 
-    private static String get(AmazonS3 space, String getFilepath) throws FileNotFoundException {
-        File tmpDir = new File("tmp");
+    public static String getFromSpace(SpaceConfig config, String getFilepath) {
+        File tmpDir = new File("data/tmp");
         if (!tmpDir.exists()) {
             tmpDir.mkdirs();
         }
-        String reloadFilename = String.format("tmp%s%s.zip", SEPARATOR, UUID.randomUUID());
+        String reloadFilename = new StringBuilder("data")
+                .append(SEPARATOR)
+                .append("tmp")
+                .append(SEPARATOR)
+                .append(UUID.randomUUID().toString())
+                .append(".zip")
+                .toString();
         File reloadFile = new File(reloadFilename);
 
+        AmazonS3 space = getSpace(config);
+
         ObjectMetadata om = space.getObject(
-                new GetObjectRequest(SPACE_BUCKET_NAME, getFilepath),
+                new GetObjectRequest(config.getBucketName(), getFilepath),
                 reloadFile
         );
 
         log.info("reloading {}", om);
 
         return reloadFilename;
+    }
+
+    @Value
+    @Builder
+    public static class SpaceConfig {
+        @NonNull private String accessToken;
+        @NonNull private String secret;
+        @NonNull
+        @Builder.Default
+        private String bucketName = "api-camp-data-backup";
+        @NonNull
+        @Builder.Default
+        private String serviceEndpoint = "nyc3.digitaloceanspaces.com";
+        @NonNull
+        @Builder.Default
+        private String region = "nyc3";
     }
 }

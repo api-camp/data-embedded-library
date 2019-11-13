@@ -6,12 +6,15 @@ import com.de314.data.local.api.model.KVInfo;
 import com.de314.data.local.api.model.ScanOptions;
 import com.de314.data.local.api.service.ArchiveStrategy;
 import com.de314.data.local.api.service.DataAdapter;
+import com.de314.data.local.utils.BaseSpliterator;
 import com.de314.data.local.utils.FileUtils;
+import com.de314.data.local.utils.metrics.Timer;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.rocksdb.ColumnFamilyHandle;
 import org.rocksdb.FlushOptions;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
@@ -20,8 +23,8 @@ import org.rocksdb.RocksIterator;
 
 import java.io.File;
 import java.util.Optional;
-import java.util.Spliterator;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
@@ -37,8 +40,10 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
     public static final String ROCKS_DB_PATH = ROCKS_PATH + "/db";
     public static final String ROCKS_ARCHIVE_PATH = ROCKS_PATH + "/archive";
     public static final String ROCKS_TMP_PATH = ROCKS_PATH + "/archive";
+    public static final int MAX_CLOSE_WAIT_TIME_MS = 3_000;
 
     static {
+        RocksDB.loadLibrary();
         new File(ROCKS_DB_PATH).mkdirs();
         new File(ROCKS_ARCHIVE_PATH).mkdirs();
         new File(ROCKS_TMP_PATH).mkdirs();
@@ -48,6 +53,7 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
     private final DataAdapter<V, byte[]> dataAdapter;
     private final DataAdapter<String, byte[]> keyAdapter;
     private final AtomicBoolean isOpen;
+    private final AtomicInteger countDownLatch;
 
     private RocksDB _rocks;
 
@@ -56,6 +62,7 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
         this.dataAdapter = dataAdapter;
         this.keyAdapter = DataAdapter.stringConverter();
         this.isOpen = new AtomicBoolean(false);
+        this.countDownLatch = new AtomicInteger();
         connect();
     }
 
@@ -78,6 +85,17 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
         return _rocks;
     }
 
+    private RocksIterator rocksIterator() {
+        RocksIterator it = rocks().newIterator();
+        countDownLatch.getAndIncrement();
+        return it;
+    }
+
+    private void closeIterator(RocksIterator it) {
+        it.close();
+        countDownLatch.getAndDecrement();
+    }
+
     @Override
     public KVInfo getInfo() {
         long size = FileUtils.directorySize(namespaceOptions.getPath());
@@ -92,13 +110,20 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
     @Override
     public long count() {
         long count = 0L;
-        RocksIterator it = rocks().newIterator();
-        it.seekToFirst();
-        while (it.isValid()) {
-            count++;
-            it.next();
+        RocksIterator it = rocksIterator();
+        log.trace("Obtained count iterator {}", it.hashCode());
+        try {
+            it.seekToFirst();
+            while (it.isValid()) {
+                count++;
+                it.next();
+            }
+        } catch (Throwable t) {
+            log.error("Failed count all", t);
+        } finally {
+            log.trace("Closing count iterator {}", it.hashCode());
+            closeIterator(it);
         }
-        it.close();
         return count;
     }
 
@@ -115,8 +140,10 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
 
     @Override
     public Stream<DataRow<V>> stream(ScanOptions options) {
-        String startKey = options.getStartKey();
-        RocksIterator it = rocks().newIterator();
+        final String startKey = options.getStartKey();
+
+        final RocksIterator it = rocksIterator();
+        log.trace("Obtained stream iterator {}", it.hashCode());
 
         if (startKey != null) {
             it.seek(keyAdapter.ab(startKey));
@@ -125,7 +152,8 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
         }
 
         if (!it.isValid()) {
-            it.close();
+            log.trace("Closing stream iterator {}", it.hashCode());
+            closeIterator(it);
             return Stream.empty();
         }
 
@@ -134,11 +162,11 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
         boolean keysOnly = options.getKeysOnly(false);
 
         return StreamSupport.stream(
-                new Spliterator<DataRow<V>>() {
+                new BaseSpliterator<DataRow<V>>() {
                     @Override
                     public boolean tryAdvance(Consumer<? super DataRow<V>> action) {
-                        boolean hasMore = false;
-                        if (it.isValid()) {
+                        boolean hasMore = it.isValid();
+                        if (hasMore) {
                             hasMore = false;
                             String key = keyAdapter.ba(it.key());
                             if (options.keyInRange(key) && count.getAndIncrement() < limit) {
@@ -147,25 +175,12 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
                                 it.next();
                                 hasMore = it.isValid();
                             }
-                        } else {
-                            it.close();
+                        }
+                        if (!hasMore) {
+                            log.trace("Closing stream iterator {}", it.hashCode());
+                            closeIterator(it);
                         }
                         return hasMore;
-                    }
-
-                    @Override
-                    public Spliterator<DataRow<V>> trySplit() {
-                        return null;
-                    }
-
-                    @Override
-                    public long estimateSize() {
-                        return 0;
-                    }
-
-                    @Override
-                    public int characteristics() {
-                        return Spliterator.ORDERED;
                     }
                 },
                 false
@@ -210,10 +225,24 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
         try {
             RocksDB rocks = rocks();
             isOpen.set(false);
-            // TODO: count down latch???
+
+            Timer timer = Timer.create();
+            while (countDownLatch.get() > 0 && timer.getDuration() < MAX_CLOSE_WAIT_TIME_MS) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (countDownLatch.get() > 0) {
+                throw new RuntimeException("Could not close database. " + countDownLatch.get() + " open iterators");
+            }
+
             FlushOptions options = new FlushOptions();
             options.setWaitForFlush(true);
             rocks.flush(options);
+            ColumnFamilyHandle cf = rocks.getDefaultColumnFamily();
+            cf.close();
             rocks.close();
         } catch (RocksDBException e) {
             e.printStackTrace();
@@ -221,13 +250,9 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
     }
 
     public void destroy() {
-        try {
-            this.close();
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }
-        boolean deleted = FileUtils.deleteFolder(namespaceOptions.getPath());
-        log.info("Destroying {} => {}", namespaceOptions.getNamespace(), deleted);
+        this.close();
+        boolean deleted = FileUtils.delete(namespaceOptions.getPath());
+        log.info("Destroyed {} => {} :: {}", namespaceOptions.getNamespace(), deleted, namespaceOptions.getPath());
     }
 
     public boolean backup(ArchiveStrategy archiveStrategy) {
@@ -246,8 +271,15 @@ public class RocksKeyValueStore<V> extends AbstractKeyValueStore<V> {
     }
 
     public boolean rollback(ArchiveStrategy archiveStrategy) {
+        // close and delete everything
         this.destroy();
-        return archiveStrategy.reload(namespaceOptions.getNamespace());
+        // download and replace db
+        boolean success = archiveStrategy.reload(namespaceOptions.getNamespace());
+        if (success) {
+            // start up db upon success
+            connect();
+        }
+        return success && isOpen.get();
     }
 
     public static RocksKeyValueStore<JsonNode> create(String namespace) {
