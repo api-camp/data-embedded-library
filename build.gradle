@@ -28,6 +28,8 @@ repositories {
 
 dependencies {
 	compile 'org.rocksdb:rocksdbjni:5.5.1'
+	compile 'org.apache.lucene:lucene-core:8.3.0'
+	compile 'org.apache.lucene:lucene-queryparser:8.3.0'
 
 	compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.671'
 
