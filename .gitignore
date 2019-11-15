@@ -6,7 +6,7 @@ build/
 !**/src/test/**
 
 ### api.camp - data
-./data
+data/
 
 ### STS ###
 .apt_generated
