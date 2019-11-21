@@ -9,6 +9,7 @@ import io.github.de314.ac.data.model.Article;
 import io.github.de314.ac.data.utils.FileUtils;
 import com.google.common.collect.Lists;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -129,6 +130,7 @@ public class RocksDBKeyValueStoreTest extends AbstractKeyValueStoreTest {
     }
 
     @Data(staticConstructor = "of")
+    @EqualsAndHashCode(callSuper = true)
     private static class TestArchiveStrategy extends LoggingArchiveStrategy {
 
         @Override

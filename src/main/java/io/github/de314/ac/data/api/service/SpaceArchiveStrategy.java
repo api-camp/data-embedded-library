@@ -1,6 +1,7 @@
 package io.github.de314.ac.data.api.service;
 
 import io.github.de314.ac.data.utils.FileUtils;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
@@ -9,6 +10,7 @@ import java.util.function.Function;
 
 @Slf4j
 @Value
+@EqualsAndHashCode(callSuper = true)
 public class SpaceArchiveStrategy extends LoggingArchiveStrategy {
 
     private FileUtils.SpaceConfig config;

@@ -2,6 +2,7 @@ package io.github.de314.ac.data.api.service;
 
 import io.github.de314.ac.data.utils.FileUtils;
 import com.google.common.collect.Maps;
+import lombok.EqualsAndHashCode;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,6 +23,7 @@ import java.util.function.Function;
  */
 @Slf4j
 @Value
+@EqualsAndHashCode(callSuper = true)
 public class DiskArchiveStrategy extends LoggingArchiveStrategy {
 
     private final Map<String, String> archiveCache = Maps.newHashMap();

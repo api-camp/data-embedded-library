@@ -64,4 +64,7 @@ public class ScanOptions {
         }
         return scanOptionsBuilder;
     }
+
+    // https://stackoverflow.com/a/58809436/2280960
+    public static class ScanOptionsBuilder {}
 }
