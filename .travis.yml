@@ -1,0 +1,16 @@
+language: java
+
+script: ./gradle sonarqube
+
+before_cache:
+  - rm -f $HOME/.gradle/caches/modules-2/modules-2.lock
+cache:
+  directories:
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
+
+addons:
+  sonarcloud:
+    organization: "de314"
+    token:
+      secure: "dWjrM/uxaBvnmDMBoPPOVqixKGpxQ81dVNndy5jtn8rd1CGyzjw6CthSFWJg3FG5fUJN3MJVX/vMiAlXzwfovVxCatWKSlcAcxEE/KOdjhE3C4Ksiznz6Jkj7ahQojopg0xho4yjKbF2e+cpDV8QeDfpoPQ6Zb2BRO0Y3FbJFnYWurrer5AHbCeffI8oQL8Zs8bNDlhZ1A3QcBX/vC57lzA7fFZdsQv6dw+kDyBm6V3jFtVgbSfNnIj3XbffyBpPeV8iwVCpB14QS82GUWz0/rpjzA/fmruMwVXknzdjDX1eiyGSbugkLI0W1dM4NAAGKDck0hppXZSiqJ4P9FlAPxr7y2TNuNY/FZXDAH/uvMaC4X88A0SwZa5k5HLdICDcg9ZJfEvayXuVyXQ+ylIQAOnUUsRJM2EZSivmKRbE/zWfwVTbmBbdOEgFaCEchRlPTUgxbqy6N0ihmADEL0ImrqR5ZOgUATybeqVjhw3Lh+H+/QPse3PCexoewwGD5bvKpJITJahbg2b8DkzlOf852gHuO9GBGrsV8ucOhR1ANlBNkEqAJ4weX3AANwDD00oCPf9P/4m7xKQS44QRGQ3BSCsUu8zUXBE2VLUkrLCw8uwICnrsTNN3QEBtg+vebnNtTZm7+saWUXB+p3S8zVYjTe0SnNxlXF5Qm/4+ZaMslMY="
