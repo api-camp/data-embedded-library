@@ -1,23 +1,35 @@
+// http://www.albertgao.xyz/2018/01/18/how-to-publish-artifact-to-maven-central-via-gradle/
+//   - $ ./gradlew clean build test publishToMavenLocal
+//   - $ ./gradlew clean build test uploadArchives
+//   - https://oss.sonatype.org/#stagingRepositories
+//   - $ ./gradlew closeAndReleaseRepository
+
+
+buildscript {
+	repositories {
+		jcenter()
+	}
+	dependencies {
+		classpath 'com.bmuschko:gradle-nexus-plugin:2.3.1'
+	}
+}
+
 plugins {
 	id 'java-library'
 	id 'maven-publish'
+	id 'io.codearte.nexus-staging' version '0.21.1'
 }
 
-group = 'com.de314.data'
+apply plugin: 'com.bmuschko.nexus'
+
+archivesBaseName = 'api-camp-data'
+group = 'io.github.de314'
 version = '1.0.0'
 sourceCompatibility = '1.8'
 
 configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
-	}
-}
-
-publishing {
-	publications {
-		mavenJava(MavenPublication) {
-			from components.java
-		}
 	}
 }
 
@@ -52,4 +64,52 @@ dependencies {
 
 test {
 	useJUnitPlatform()
+}
+
+modifyPom {
+	project {
+		name 'api-camp-data'
+		description 'Embedded datastore utilities for REST BFF"s.'
+		url 'https://github.com/de314/data-embedded-library'
+		inceptionYear '2019'
+
+		scm {
+			url 'https://github.com/de314/data-embedded-library'
+			connection 'scm:https://github.com/de314/data-embedded-library.git'
+			developerConnection 'scm:git@github.com:de314/data-embedded-library.git'
+		}
+
+		licenses {
+			license {
+				name 'The Apache Software License, Version 2.0'
+				url 'https://github.com/de314/data-embedded-library/blob/master/LICENSE'
+				distribution 'repo'
+			}
+		}
+
+		developers {
+			developer {
+				id 'de314'
+				name 'David Esposito'
+				email 'david@de314.com'
+			}
+		}
+	}
+}
+
+extraArchive {
+	sources = true
+	tests = true
+	javadoc = true
+}
+
+nexus {
+	sign = true
+	repositoryUrl = 'https://oss.sonatype.org/service/local/staging/deploy/maven2/'
+	snapshotRepositoryUrl = 'https://oss.sonatype.org/content/repositories/snapshots/'
+}
+
+nexusStaging {
+//	packageGroup = "org.mycompany" //optional if packageGroup == project.getGroup()
+//	stagingProfileId = "yourStagingProfileId" //when not defined will be got from server using "packageGroup"
 }

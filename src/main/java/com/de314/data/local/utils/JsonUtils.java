@@ -121,6 +121,11 @@ public class JsonUtils {
         return new byte[0];
     }
 
+    // TODO:
+    public JsonNode asNode(Object value) {
+        return null;
+    }
+
     public <T> T fromJson(@NonNull String json, @NonNull Class<T> targetKind) {
         try {
             return jsonObjectMapper.readValue(json, targetKind);
@@ -151,6 +156,16 @@ public class JsonUtils {
     public <T> T fromJson(@NonNull byte[] json, @NonNull Class<T> targetKind) {
         try {
             return jsonObjectMapper.readValue(json, targetKind);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public <T> T fromJson(@NonNull JsonNode json, @NonNull Class<T> targetKind) {
+        try {
+            // TODO
+            return jsonObjectMapper.readValue(json.toString(), targetKind);
         } catch (IOException e) {
             e.printStackTrace();
         }
