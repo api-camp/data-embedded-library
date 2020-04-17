@@ -1,5 +1,6 @@
 package io.github.de314.ac.data.api.kv;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.github.de314.ac.data.api.model.CursorPage;
 import io.github.de314.ac.data.api.model.DataRow;
 import io.github.de314.ac.data.api.model.KVInfo;
@@ -67,5 +68,21 @@ public class AdaptedKeyValueStore<A, B> implements KeyValueStore<A> {
     @Override
     public void close() {
         delegate.close();
+    }
+
+    public static KeyValueStore<String> createStringStore(KeyValueStore<byte[]> delegate) {
+        return create(delegate, DataAdapter.stringConverter());
+    }
+
+    public static KeyValueStore<JsonNode> createJsonStore(KeyValueStore<byte[]> delegate) {
+        return create(delegate, DataAdapter.jsonByteAdapter());
+    }
+
+    public static <T> KeyValueStore<T> createPojoStore(KeyValueStore<byte[]> delegate, Class<T> target) {
+        return create(delegate, DataAdapter.pojoByteConverter(target));
+    }
+
+    public static <X, Y> KeyValueStore<X> create(KeyValueStore<Y> delegate, DataAdapter<X, Y> dataAdapter) {
+        return new AdaptedKeyValueStore<>(delegate, dataAdapter);
     }
 }

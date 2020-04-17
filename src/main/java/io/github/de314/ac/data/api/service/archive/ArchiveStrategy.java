@@ -1,4 +1,4 @@
-package io.github.de314.ac.data.api.service;
+package io.github.de314.ac.data.api.service.archive;
 
 public interface ArchiveStrategy {
 

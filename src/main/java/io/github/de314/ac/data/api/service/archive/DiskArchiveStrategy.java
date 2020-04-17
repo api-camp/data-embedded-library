@@ -1,4 +1,4 @@
-package io.github.de314.ac.data.api.service;
+package io.github.de314.ac.data.api.service.archive;
 
 import io.github.de314.ac.data.utils.FileUtils;
 import com.google.common.collect.Maps;

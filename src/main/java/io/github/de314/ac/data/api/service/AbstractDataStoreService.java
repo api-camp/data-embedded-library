@@ -3,6 +3,7 @@ package io.github.de314.ac.data.api.service;
 import io.github.de314.ac.data.api.kv.KeyValueStore;
 import io.github.de314.ac.data.api.model.KVInfo;
 import io.github.de314.ac.data.api.model.ScanOptions;
+import io.github.de314.ac.data.api.service.archive.ArchiveStrategy;
 import io.github.de314.ac.data.memory.MapKeyValueStore;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.AccessLevel;

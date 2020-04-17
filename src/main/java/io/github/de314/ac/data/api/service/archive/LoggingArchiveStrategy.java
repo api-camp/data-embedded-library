@@ -1,4 +1,4 @@
-package io.github.de314.ac.data.api.service;
+package io.github.de314.ac.data.api.service.archive;
 
 import lombok.extern.slf4j.Slf4j;
 

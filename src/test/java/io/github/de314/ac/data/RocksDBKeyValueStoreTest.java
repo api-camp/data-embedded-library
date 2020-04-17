@@ -2,8 +2,8 @@ package io.github.de314.ac.data;
 
 import io.github.de314.ac.data.api.kv.KeyValueStore;
 import io.github.de314.ac.data.api.service.DataStoreService;
-import io.github.de314.ac.data.api.service.DiskArchiveStrategy;
-import io.github.de314.ac.data.api.service.LoggingArchiveStrategy;
+import io.github.de314.ac.data.api.service.archive.DiskArchiveStrategy;
+import io.github.de314.ac.data.api.service.archive.LoggingArchiveStrategy;
 import io.github.de314.ac.data.disk.RockDBDataStoreService;
 import io.github.de314.ac.data.model.Article;
 import io.github.de314.ac.data.utils.FileUtils;
